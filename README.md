@@ -47,7 +47,7 @@ Once you've set up the `conf.ini` file, simply run the script, and it will retri
 
 ## Support
 
-If you encounter any issues or have any questions, feel free to [open an issue](https://github.com/yourusername/network-hosts-browser/issues) on GitHub.
+If you encounter any issues or have any questions, feel free to [open an issue](https://github.com/novenopatch/network-hosts-browser/issues) on GitHub.
 
 ## License
 
