@@ -35,10 +35,37 @@ func main() {
 		fmt.Println("Erreur en exécutant la commande:", err)
 		return
 	}
+	hosts := getHosts(string(output))
+	if hosts == nil {
+		return
+	}
+	config, err := loadConfig("conf.ini")
+	if err != nil {
+		fmt.Println("Erreur en chargeant la configuration:", err)
+		return
+	}
 
+	serverIP := findIPByMAC(hosts, config.ServerMAC)
+	if serverIP == "" {
+		fmt.Println("L'adresse IP du serveur n'a pas été trouvée. MAC:", config.ServerMAC)
+		return
+	}
+
+	err = openInBrowser(serverIP)
+	if err != nil {
+		fmt.Println("Erreur en ouvrant l'adresse IP dans le navigateur:", err)
+		return
+	}
+	fmt.Println("L'adresse IP du serveur a été ouverte dans votre navigateur par défaut.")
+	fmt.Println("Lien :", "http://"+serverIP)
+
+	fmt.Println("Appuyez sur Entrée pour quitter...")
+	fmt.Scanln()
+}
+func getHosts(output string) []Hosts {
 	var hosts []Hosts
 
-	scanner := bufio.NewScanner(strings.NewReader(string(output)))
+	scanner := bufio.NewScanner(strings.NewReader(output))
 	for scanner.Scan() {
 		line := scanner.Text()
 		var ip, mac string
@@ -62,24 +89,11 @@ func main() {
 	}
 	if err := scanner.Err(); err != nil {
 		fmt.Println("Erreur en analysant la sortie de la commande:", err)
-		return
+		return nil
 	}
+	return hosts
 
-	config, err := loadConfig("conf.ini")
-	if err != nil {
-		fmt.Println("Erreur en chargeant la configuration:", err)
-		return
-	}
-
-	serverIP := findIPByMAC(hosts, config.ServerMAC)
-	if serverIP == "" {
-		fmt.Println("L'adresse IP du serveur n'a pas été trouvée. MAC:", config.ServerMAC)
-		return
-	}
-
-	openInBrowser(serverIP)
 }
-
 func findIPByMAC(hosts []Hosts, mac string) string {
 	for _, host := range hosts {
 		if host.MAC == mac {
@@ -94,14 +108,15 @@ func loadConfig(filename string) (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	config := &Config{
-		ServerMAC: cfg.Section("server").Key("server_mac").String(),
-	}
-	return config, nil
+	serverMAC := cfg.Section("server").Key("server_mac").String()
+    if serverMAC == "" {
+        return nil, fmt.Errorf("clé 'server_mac' manquante dans le fichier de configuration")
+    }
+    
+    return &Config{ServerMAC: serverMAC}, nil
 }
 
-func openInBrowser(ip string) {
+func openInBrowser(ip string)  error{
 	var cmd *exec.Cmd
 	switch runtime.GOOS {
 	case "darwin":
@@ -112,12 +127,8 @@ func openInBrowser(ip string) {
 		cmd = exec.Command("xdg-open", "http://"+ip)
 	default:
 		fmt.Println("Système d'exploitation non pris en charge.")
-		return
 	}
-	err := cmd.Run()
-	if err != nil {
-		fmt.Println("Erreur en ouvrant l'adresse IP dans le navigateur:", err)
-	}
+	return cmd.Run()
 }
 
 func normalizeMAC(mac string) string {
